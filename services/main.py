@@ -23,7 +23,24 @@ class CustomerResponse(BaseModel):
     last_name: str
     created_at: str
 
-# Existing endpoints (these are already documented)
+# NEW MODEL - This will be detected by AI
+class CustomerPreferences(BaseModel):
+    categories: List[str]
+    price_range: Optional[dict] = {"min": 0, "max": 1000}
+    brands: Optional[List[str]] = []
+    newsletter_subscription: bool = True
+
+class PreferencesResponse(BaseModel):
+    id: int
+    customer_id: int
+    categories: List[str]
+    price_range: dict
+    brands: List[str]
+    newsletter_subscription: bool
+    created_at: str
+    updated_at: str
+
+# Existing endpoints (unchanged)
 @app.get("/", tags=["Health"])
 async def root():
     """Health check endpoint"""
@@ -58,6 +75,54 @@ async def get_customer(customer_id: int):
         first_name="John",
         last_name="Doe",
         created_at="2025-01-15T10:30:00Z"
+    )
+
+# 🚨 NEW ENDPOINT - This should trigger documentation generation
+@app.post("/api/customers/{customer_id}/preferences", response_model=PreferencesResponse, tags=["Preferences"])
+async def create_customer_preferences(customer_id: int, preferences: CustomerPreferences):
+    """
+    Create or update customer preferences for personalized recommendations.
+    
+    This endpoint allows customers to set their shopping preferences including:
+    - Product categories they're interested in
+    - Price range for recommendations  
+    - Preferred brands
+    - Newsletter subscription status
+    """
+    # Simulate preferences creation
+    new_preferences = PreferencesResponse(
+        id=456,
+        customer_id=customer_id,
+        categories=preferences.categories,
+        price_range=preferences.price_range,
+        brands=preferences.brands,
+        newsletter_subscription=preferences.newsletter_subscription,
+        created_at="2025-01-15T14:30:00Z",
+        updated_at="2025-01-15T14:30:00Z"
+    )
+    return new_preferences
+
+# 🚨 ANOTHER NEW ENDPOINT - This should also be detected
+@app.get("/api/customers/{customer_id}/preferences", response_model=PreferencesResponse, tags=["Preferences"])
+async def get_customer_preferences(customer_id: int):
+    """
+    Retrieve customer preferences by customer ID.
+    
+    Returns the customer's current preferences for personalized recommendations.
+    """
+    # Simulate preferences retrieval
+    if customer_id != 123:
+        raise HTTPException(status_code=404, detail="Customer not found")
+    
+    return PreferencesResponse(
+        id=456,
+        customer_id=customer_id,
+        categories=["electronics", "books", "clothing"],
+        price_range={"min": 10, "max": 500},
+        brands=["Apple", "Nike", "Amazon"],
+        newsletter_subscription=True,
+        created_at="2025-01-15T14:30:00Z",
+        updated_at="2025-01-15T14:30:00Z"
     )
 
 if __name__ == "__main__":
