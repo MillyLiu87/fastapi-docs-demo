@@ -1,0 +1,84 @@
+# .github/workflows/ai-docs-check.yml
+
+name: 🤖 AI Documentation Checker (Google Gemini)
+
+# Trigger on pushes to main branch
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+# Only run if Python files changed
+jobs:
+  check-documentation:
+    runs-on: ubuntu-latest
+    
+    steps:
+    # Checkout code with full history (need previous commit for diff)
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 2  # Get current and previous commit
+    
+    # Set up Python
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    # Install dependencies
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r scripts/requirements.txt
+    
+    # Check if any Python files changed
+    - name: Check for Python changes
+      id: check-changes
+      run: |
+        # Get list of changed Python files
+        CHANGED_FILES=$(git diff --name-only HEAD^ HEAD | grep '\.py$' || echo "")
+        if [ -z "$CHANGED_FILES" ]; then
+          echo "changed=false" >> $GITHUB_OUTPUT
+          echo "No Python files changed"
+        else
+          echo "changed=true" >> $GITHUB_OUTPUT
+          echo "Changed Python files:"
+          echo "$CHANGED_FILES"
+        fi
+    
+    # Run AI documentation checker (only if Python files changed)
+    - name: Run AI Documentation Checker
+      if: steps.check-changes.outputs.changed == 'true'
+      env:
+        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        GMAIL_USER: ${{ secrets.GMAIL_USER }}
+        GMAIL_PASSWORD: ${{ secrets.GMAIL_PASSWORD }}
+        NOTIFICATION_EMAIL: ${{ secrets.NOTIFICATION_EMAIL }}
+        GITHUB_REPOSITORY: ${{ github.repository }}
+        GITHUB_SHA: ${{ github.sha }}
+      run: |
+        echo "🚀 Running AI Documentation Checker..."
+        cd ${{ github.workspace }}
+        python scripts/ai_doc_checker.py
+    
+    # Optional: Comment on PR with results (for pull requests)
+    - name: Comment on PR
+      if: github.event_name == 'pull_request' && steps.check-changes.outputs.changed == 'true'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: '🤖 **AI Documentation Checker** has analyzed this PR and will send email notifications for any new API endpoints detected. Check your email for documentation updates!'
+          })
+
+---
+
+# scripts/requirements.txt
+
+openai==1.3.0
+requests==2.31.0
