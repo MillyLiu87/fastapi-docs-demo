@@ -17,6 +17,10 @@ from datetime import datetime
 import json
 import sys
 import time
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 @dataclass
 class APIChange:
